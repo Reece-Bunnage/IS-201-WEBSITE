@@ -1,0 +1,126 @@
+
+body {
+    background-color: #f0f5ff;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    color: #222;
+    margin: 0; 
+    padding-top: 90px; 
+}
+
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0078ff;
+    padding: 15px 25px;
+    border-bottom: 4px solid #005ad1;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 999;
+}
+
+.logo {
+    margin: 0;
+    font-size: 22px;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    margin-left: 18px;
+    font-weight: bold;
+    font-size: 15px;
+    padding: 7px 10px;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+
+.intro-section {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 5px solid #003366;
+    border-bottom: 5px solid #003366;
+    border-right: 5px solid #003366;
+    border-top: 5px solid #003366;
+    margin: 30px auto;
+    max-width: 900px;
+}
+
+
+.castle-img {
+    width: 100%;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+
+
+.list-section {
+    background: #e8efff;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 30px auto;
+    max-width: 900px;
+    border-radius: 10px;
+    border: #227905 5px solid;
+}
+#starting {
+    font-size: xx-large;
+    font-weight: bold;
+    font-style: italic;
+    
+  }
+.Fancy {
+    color: rgb(0, 128, 9);
+    font-weight: bold;
+    font-style: italic;
+    font-size: large;
+  }
+.normal {
+    color: black;
+    font-weight: normal;
+    font-style: normal;
+    font-size: medium;
+}
+.fun-fun {
+    font-family: cursive;
+    font-style: oblique;
+}
+
+.tableau-wrapper {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #003366;
+
+    width: 1150px;      /* 🌟 Make div wide enough for Tableau */
+    margin: 30px auto;  /* Centers it */
+    text-align: left;   /* 🌟 Left-aligns Tableau content */
+}
+.tableau-wrapper .tableauPlaceholder {
+    margin: 0;          /* No auto-centering */
+}
+.Harry-Potter-Movies {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #003366;
+    width: 550px;      /* 🌟 Make div wide enough for iframe */
+    margin: 30px auto;  /* Centers it */
+    text-align: center;   /* 🌟 Center-aligns iframe content */
+}
+.video-section {
+    background: #e8efff;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 30px auto;
+    max-width: 900px;
+}
+

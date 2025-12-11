@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crossy Penguin – Multi Level</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    user-select: none;
+  }
+  canvas {
+    border: 3px solid #333;
+    border-radius: 10px;
+    background: #222;
+  }
+  .title {
+    position: absolute;
+    top: 10px;
+    font-weight: bold;
+    font-size: 22px;
+    text-shadow: 0 0 6px #000;
+  }
+  .side-link {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  background: #0078ff;
+  padding: 10px 16px;
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 2px solid #005ad1;
+  text-decoration: none;
+  transition: 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.side-link:hover {
+  background: #33a2ff;
+  border-color: #006ee6;
+}
+.home-link {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  background: #ffcb2f;
+  padding: 8px 14px;
+  color: #000;
+  font-weight: bold;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 2px solid #b48a00;
+  text-decoration: none;
+  transition: 0.2s;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.35);
+}
+
+.home-link:hover {
+  background: #ffd966;
+  border-color: #c99700;
+}
+
+</style>
+</head>
+<body>
+<div class="title">Crossy Penguin – Linux Edition</div>
+<canvas id="gameCanvas" width="480" height="640"></canvas>
+<a href="webapp.html" class="side-link">Back to Flappy</a>
+<a href="index.html" class="home-link">Home</a>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const TILE = 40;
+const COLS = canvas.width / TILE;   // 12
+const ROWS = canvas.height / TILE;  // 16
+const START_ROW = ROWS - 3;
+
+const LEVEL_COUNT = 3;
+
+// Penguin player
+const penguin = {
+  col: Math.floor(COLS / 2),
+  row: START_ROW,
+  x: 0,
+  y: 0,
+};
+
+// Moving obstacles (cars, trains, keyboards)
+let objects = [];
+
+let score = 0;
+let best = 0;
+let gameOver = false;
+let started = false;
+let currentLevel = 1;
+let endGame = false;
+
+// Helper: convert grid to pixels
+function updatePenguinPos() {
+  penguin.x = penguin.col * TILE + TILE / 2;
+  penguin.y = penguin.row * TILE + TILE / 2;
+}
+
+/* =============== LEVEL SETUP =============== */
+
+function setupLevel(level) {
+  objects = [];
+  gameOver = false;
+  started = false;
+  endGame = false;
+
+  // Reset penguin to bottom center
+  penguin.col = Math.floor(COLS / 2);
+  penguin.row = START_ROW;
+  updatePenguinPos();
+
+  // Hard mode: generally faster speeds
+  if (level === 1) {
+    initLevel1SnowCity();
+  } else if (level === 2) {
+    initLevel2Trains();
+  } else if (level === 3) {
+    initLevel3River();
+  }
+}
+
+// Level 1: Snowy Linux server city (icy roads + cars)
+function initLevel1SnowCity() {
+  // Rows with roads
+  const roadRows = [START_ROW - 1, START_ROW - 3, START_ROW - 5, START_ROW - 7];
+  roadRows.forEach((row, idx) => {
+    const dir = idx % 2 === 0 ? 1 : -1;
+    const baseSpeed = 2.2 + Math.random() * 1.4; // hard mode
+    const count = 3 + Math.floor(Math.random() * 2);
+
+    for (let i = 0; i < count; i++) {
+      const lengthTiles = 1 + Math.floor(Math.random() * 2);
+      const widthPx = lengthTiles * TILE * 0.9;
+      const gap = (canvas.width + 200) / count;
+      const baseX = i * gap;
+
+      objects.push({
+        type: "car",
+        row,
+        y: row * TILE + TILE * 0.1,
+        x: dir === 1 ? baseX : canvas.width - baseX,
+        w: widthPx,
+        h: TILE * 0.8,
+        dir,
+        speed: baseSpeed,
+        color: idx % 3 === 0 ? "#ff5555" : idx % 3 === 1 ? "#ffb300" : "#00c853"
+      });
+    }
+  });
+}
+
+// Level 2: Train & subway rails (fast long trains)
+function initLevel2Trains() {
+  const trackRows = [START_ROW - 1, START_ROW - 3, START_ROW - 5];
+
+  trackRows.forEach((row, idx) => {
+    const dir = idx % 2 === 0 ? 1 : -1;
+    const speed = 3.5 + Math.random() * 2.0; // fast trains, hard mode
+    const count = 2; // fewer but big trains
+
+    for (let i = 0; i < count; i++) {
+      const lengthTiles = 3 + Math.floor(Math.random() * 2); // long
+      const widthPx = lengthTiles * TILE;
+      const gap = (canvas.width + 400) / count;
+      const baseX = i * gap;
+
+      objects.push({
+        type: "train",
+        row,
+        y: row * TILE + TILE * 0.05,
+        x: dir === 1 ? baseX : canvas.width - baseX,
+        w: widthPx,
+        h: TILE * 0.9,
+        dir,
+        speed,
+      });
+    }
+  });
+}
+
+// Level 3: River with floating keyboards/logs
+function initLevel3River() {
+  const riverRows = [START_ROW - 1, START_ROW - 3, START_ROW - 5, START_ROW - 7];
+
+  riverRows.forEach((row, idx) => {
+    const dir = idx % 2 === 0 ? 1 : -1;
+    const speed = 2.5 + Math.random() * 1.8; // medium-fast boards
+    const count = 3 + Math.floor(Math.random() * 2);
+
+    for (let i = 0; i < count; i++) {
+      const lengthTiles = 2; // long keyboard
+      const widthPx = lengthTiles * TILE * 0.9;
+      const gap = (canvas.width + 200) / count;
+      const baseX = i * gap;
+
+      objects.push({
+        type: "board", // keyboard/log
+        row,
+        y: row * TILE + TILE * 0.15,
+        x: dir === 1 ? baseX : canvas.width - baseX,
+        w: widthPx,
+        h: TILE * 0.7,
+        dir,
+        speed,
+      });
+    }
+  });
+}
+
+/* =============== DRAWING BACKGROUNDS BY LEVEL =============== */
+
+function drawBackgroundLevel1() {
+  for (let r = 0; r < ROWS; r++) {
+    // Snowy grass vs icy road
+    const isRoad = [START_ROW - 1, START_ROW - 3, START_ROW - 5, START_ROW - 7].includes(r);
+    if (isRoad) {
+      ctx.fillStyle = "#5c6f7a"; // icy asphalt
+      ctx.fillRect(0, r * TILE, canvas.width, TILE);
+      ctx.strokeStyle = "#cfd8dc";
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(0, r*TILE + TILE/2);
+      ctx.lineTo(canvas.width, r*TILE + TILE/2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      const snow = r >= START_ROW ? "#e0f7fa" : "#cfd8dc";
+      ctx.fillStyle = snow;
+      ctx.fillRect(0, r * TILE, canvas.width, TILE);
+    }
+  }
+
+  // Simple “server city” silhouettes at top
+  ctx.fillStyle = "#90a4ae";
+  ctx.fillRect(0, 0, canvas.width, TILE * 1);
+  ctx.fillStyle = "#78909c";
+  ctx.fillRect(40, 5, 60, 30);
+  ctx.fillRect(150, 10, 80, 25);
+  ctx.fillRect(280, 6, 100, 32);
+}
+
+function drawBackgroundLevel2() {
+  for (let r = 0; r < ROWS; r++) {
+    const isTrack = [START_ROW - 1, START_ROW - 3, START_ROW - 5].includes(r);
+    if (isTrack) {
+      ctx.fillStyle = "#424242";
+      ctx.fillRect(0, r*TILE, canvas.width, TILE);
+
+      // rails
+      ctx.strokeStyle = "#bdbdbd";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, r*TILE + TILE*0.25);
+      ctx.lineTo(canvas.width, r*TILE + TILE*0.25);
+      ctx.moveTo(0, r*TILE + TILE*0.75);
+      ctx.lineTo(canvas.width, r*TILE + TILE*0.75);
+      ctx.stroke();
+
+      // sleepers
+      ctx.strokeStyle = "#6d4c41";
+      ctx.lineWidth = 4;
+      for (let x=0; x<canvas.width; x+=TILE) {
+        ctx.beginPath();
+        ctx.moveTo(x, r*TILE + TILE*0.35);
+        ctx.lineTo(x, r*TILE + TILE*0.65);
+        ctx.stroke();
+      }
+    } else {
+      // Underground concrete / platform
+      ctx.fillStyle = "#616161";
+      ctx.fillRect(0, r*TILE, canvas.width, TILE);
+    }
+  }
+}
+
+function drawBackgroundLevel3() {
+  for (let r = 0; r < ROWS; r++) {
+    const isRiver = [START_ROW - 1, START_ROW - 3, START_ROW - 5, START_ROW - 7].includes(r);
+    if (isRiver) {
+      // water
+      const grad = ctx.createLinearGradient(0, r*TILE, 0, r*TILE + TILE);
+      grad.addColorStop(0, "#0288d1");
+      grad.addColorStop(1, "#01579b");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, r*TILE, canvas.width, TILE);
+
+      // small wave lines
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 10]);
+      ctx.beginPath();
+      ctx.moveTo(0, r*TILE + TILE*0.3);
+      ctx.lineTo(canvas.width, r*TILE + TILE*0.3);
+      ctx.moveTo(0, r*TILE + TILE*0.7);
+      ctx.lineTo(canvas.width, r*TILE + TILE*0.7);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      // grassy riverbank
+      ctx.fillStyle = r >= START_ROW ? "#8bc34a" : "#aed581";
+      ctx.fillRect(0, r*TILE, canvas.width, TILE);
+    }
+  }
+}
+
+/* =============== DRAW OBJECTS =============== */
+
+function drawObjects() {
+  objects.forEach(obj => {
+    if (obj.type === "car") {
+      drawCar(obj);
+    } else if (obj.type === "train") {
+      drawTrain(obj);
+    } else if (obj.type === "board") {
+      drawBoard(obj);
+    }
+  });
+}
+
+function drawCar(car) {
+  ctx.fillStyle = car.color;
+  ctx.fillRect(car.x, car.y, car.w, car.h);
+
+  // wheels
+  ctx.fillStyle = "#111";
+  const ws = car.h * 0.25;
+  ctx.fillRect(car.x + 4, car.y - ws*0.3, ws, ws);
+  ctx.fillRect(car.x + car.w - ws - 4, car.y - ws*0.3, ws, ws);
+  ctx.fillRect(car.x + 4, car.y + car.h - ws*0.7, ws, ws);
+  ctx.fillRect(car.x + car.w - ws - 4, car.y + car.h - ws*0.7, ws, ws);
+
+  // windshield highlight
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.fillRect(car.x + car.w * 0.1, car.y + car.h * 0.15, car.w * 0.35, car.h * 0.3);
+}
+
+function drawTrain(train) {
+  // body
+  ctx.fillStyle = "#cfd8dc";
+  ctx.fillRect(train.x, train.y, train.w, train.h);
+
+  // windows
+  ctx.fillStyle = "#455a64";
+  const windowHeight = train.h * 0.4;
+  for (let x = train.x + 10; x < train.x + train.w - 10; x += 30) {
+    ctx.fillRect(x, train.y + train.h*0.2, 20, windowHeight);
+  }
+
+  // stripe
+  ctx.fillStyle = "#ff5252";
+  ctx.fillRect(train.x, train.y + train.h*0.8, train.w, train.h*0.15);
+}
+
+function drawBoard(board) {
+  // Floating keyboard/log
+  ctx.fillStyle = "#4e342e";
+  ctx.fillRect(board.x, board.y, board.w, board.h);
+
+  // keys pattern
+  ctx.fillStyle = "#d7ccc8";
+  const keyW = board.w / 8;
+  const keyH = board.h / 3;
+  for (let i = 0; i < 8; i++) {
+    ctx.fillRect(board.x + i*keyW + 2, board.y + keyH*0.4, keyW - 4, keyH * 0.8);
+  }
+}
+
+/* =============== DRAW PENGUIN =============== */
+
+function drawPenguin() {
+  const x = penguin.x;
+  const y = penguin.y;
+  const bodyW = TILE * 0.8;
+  const bodyH = TILE * 0.95;
+  const left = x - bodyW / 2;
+  const top = y - bodyH / 2;
+
+  // body (black)
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(left, top, bodyW, bodyH);
+
+  // belly (white)
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(left + bodyW * 0.2, top + bodyH * 0.25, bodyW * 0.6, bodyH * 0.5);
+
+  // beak
+  ctx.fillStyle = "#ffb300";
+  ctx.beginPath();
+  ctx.moveTo(x, top + bodyH * 0.3);
+  ctx.lineTo(x + bodyW * 0.15, top + bodyH * 0.36);
+  ctx.lineTo(x - bodyW * 0.15, top + bodyH * 0.36);
+  ctx.closePath();
+  ctx.fill();
+
+  // eyes
+  ctx.fillStyle = "#ffffff";
+  const eyeR = bodyW * 0.08;
+  const eyeY = top + bodyH * 0.22;
+  ctx.beginPath(); ctx.arc(x - bodyW*0.15, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + bodyW*0.15, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = "#000000";
+  const pupilR = eyeR * 0.5;
+  ctx.beginPath(); ctx.arc(x - bodyW*0.15, eyeY, pupilR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + bodyW*0.15, eyeY, pupilR, 0, Math.PI*2); ctx.fill();
+
+  // feet
+  ctx.fillStyle = "#ffb300";
+  const footW = bodyW * 0.3;
+  const footH = bodyH * 0.15;
+  ctx.fillRect(x - bodyW*0.3, top + bodyH - footH*0.9, footW, footH);
+  ctx.fillRect(x + bodyW*0.0, top + bodyH - footH*0.9, footW, footH);
+}
+
+/* =============== OBJECT UPDATES & COLLISIONS =============== */
+
+function updateObjects() {
+  objects.forEach(obj => {
+    obj.x += obj.speed * obj.dir;
+    if (obj.dir === 1 && obj.x > canvas.width + 80) {
+      obj.x = -obj.w - Math.random() * 200;
+    } else if (obj.dir === -1 && obj.x + obj.w < -80) {
+      obj.x = canvas.width + Math.random() * 200;
+    }
+  });
+}
+
+function checkCollision() {
+  const penguinBox = {
+    x: penguin.x - TILE * 0.3,
+    y: penguin.y - TILE * 0.35,
+    w: TILE * 0.6,
+    h: TILE * 0.7
+  };
+
+  for (let obj of objects) {
+    if (obj.row !== penguin.row) continue;
+    const box = { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
+    if (penguinBox.x < box.x + box.w &&
+        penguinBox.x + penguinBox.w > box.x &&
+        penguinBox.y < box.y + box.h &&
+        penguinBox.y + penguinBox.h > box.y) {
+      gameOver = true;
+      started = false;
+      best = Math.max(best, score);
+      break;
+    }
+  }
+}
+
+/* =============== INPUT HANDLING =============== */
+
+function movePenguin(dx, dy) {
+  if (gameOver || endGame) return;
+  started = true;
+
+  let newCol = penguin.col + dx;
+  let newRow = penguin.row + dy;
+
+  if (newCol >= 0 && newCol < COLS) penguin.col = newCol;
+
+  // If going off the top, advance level / end game
+  if (newRow < 0) {
+    handleReachedTop();
+  } else if (newRow < ROWS) {
+    penguin.row = newRow;
+  }
+
+  updatePenguinPos();
+
+  // scoring: each successful move up adds to score
+  if (dy === -1) {
+    score++;
+    best = Math.max(best, score);
+  }
+}
+
+function handleReachedTop() {
+  // Instant switch, hard mode behavior
+  if (currentLevel < LEVEL_COUNT) {
+    currentLevel++;
+    setupLevel(currentLevel);
+  } else {
+    // Beat level 3 → End Game
+    endGame = true;
+    gameOver = true;
+    started = false;
+    best = Math.max(best, score);
+  }
+}
+
+document.addEventListener("keydown", e => {
+  if ((gameOver || endGame) && (e.code === "Space" || e.key === "Enter")) {
+    restartAll();
+    return;
+  }
+
+  switch (e.key) {
+    case "ArrowUp":
+    case "w":
+    case "W":
+      movePenguin(0, -1);
+      break;
+    case "ArrowDown":
+    case "s":
+    case "S":
+      movePenguin(0, 1);
+      break;
+    case "ArrowLeft":
+    case "a":
+    case "A":
+      movePenguin(-1, 0);
+      break;
+    case "ArrowRight":
+    case "d":
+    case "D":
+      movePenguin(1, 0);
+      break;
+  }
+});
+
+/* =============== RESTART =============== */
+
+function restartAll() {
+  score = 0;
+  currentLevel = 1;
+  endGame = false;
+  setupLevel(currentLevel);
+}
+
+/* =============== HUD & OVERLAYS =============== */
+
+function drawHUD() {
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, canvas.width, 30);
+  ctx.fillStyle = "#fff";
+  ctx.font = "16px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("Score: " + score, 10, 20);
+  ctx.textAlign = "center";
+  ctx.fillText("Level: " + currentLevel + " / " + LEVEL_COUNT, canvas.width/2, 20);
+  ctx.textAlign = "right";
+  ctx.fillText("Best: " + best, canvas.width - 10, 20);
+}
+
+function drawGameOver() {
+  if (!gameOver && !endGame) return;
+
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(canvas.width * 0.1, canvas.height * 0.33, canvas.width * 0.8, 150);
+
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.font = "28px Arial";
+
+  if (endGame) {
+    ctx.fillText("End Game!", canvas.width / 2, canvas.height * 0.38);
+    ctx.font = "18px Arial";
+    ctx.fillText("You crossed all 3 levels!", canvas.width / 2, canvas.height * 0.43);
+  } else {
+    ctx.fillText("Game Over", canvas.width / 2, canvas.height * 0.38);
+  }
+
+  ctx.font = "18px Arial";
+  ctx.fillText("Score: " + score + "   Best: " + best, canvas.width / 2, canvas.height * 0.48);
+  ctx.font = "16px Arial";
+  ctx.fillText("Press SPACE or ENTER to restart", canvas.width / 2, canvas.height * 0.54);
+}
+
+/* =============== MAIN LOOP =============== */
+
+function update() {
+  if (started && !gameOver && !endGame) {
+    updateObjects();
+    checkCollision();
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (currentLevel === 1) {
+    drawBackgroundLevel1();
+  } else if (currentLevel === 2) {
+    drawBackgroundLevel2();
+  } else {
+    drawBackgroundLevel3();
+  }
+
+  drawObjects();
+  drawPenguin();
+  drawHUD();
+  drawGameOver();
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* =============== INIT =============== */
+updatePenguinPos();
+setupLevel(currentLevel);
+loop();
+</script>
+</body>
+</html>

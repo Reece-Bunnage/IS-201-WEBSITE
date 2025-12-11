@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flappy Wheel</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    user-select: none;
+    font-family: Arial, sans-serif;
+  }
+  .title {
+    position: absolute;
+    top: 10px;
+    color: #d9d9d9;
+    font-size: 22px;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px white;
+  }
+  canvas {
+    border: 3px solid #444;
+    border-radius: 10px;
+  }
+  .switch {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  background: #0078ff;
+  color: #fff;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 6px;
+  border: 2px solid #005ad1;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  background: #33a2ff;
+  border-color: #006ee6;
+}
+.side-link {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  background: #0078ff;
+  padding: 10px 16px;
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 2px solid #005ad1;
+  text-decoration: none;
+  transition: 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.side-link:hover {
+  background: #33a2ff;
+  border-color: #006ee6;
+}
+.home-link {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  background: #ffcb2f;
+  padding: 8px 14px;
+  color: #000;
+  font-weight: bold;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 2px solid #b48a00;
+  text-decoration: none;
+  transition: 0.2s;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.35);
+}
+
+.home-link:hover {
+  background: #ffd966;
+  border-color: #c99700;
+}
+
+</style>
+</head>
+<body>
+<div class="title">Flappy Wheel, Avoid Errors & Spam</div>
+<canvas id="gameCanvas" width="380" height="540"></canvas>
+<div class="switch">
+  <a href="webapp-crossy.html" class="side-link">Try Something Else!</a>
+</div>
+<a href="index.html" class="home-link">Home</a>
+
+
+<script>
+/* === CANVAS === */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const width = canvas.width, height = canvas.height;
+
+/* === PLAYER (RAINBOW MAC SPINNER) === */
+const bird = {
+  x: 80,
+  y: height/2,
+  r: 18,
+  v: 0,
+  gravity: 0.4,
+  flap: -7,
+  spin: 0
+};
+
+/* === PIPES === */
+const pipes = [];
+const pipeWidth = 80;
+const pipeGap = 140;
+const spacing = 240;
+const pipeSpeed = 2.3;
+
+let score = 0, best = 0, frame = 0;
+let started = false, gameOver = false;
+
+/* === FLAP INPUT === */
+function flap() {
+  if (!started && !gameOver) started = true;
+  if (gameOver) return reset();
+  bird.v = bird.flap;
+}
+document.addEventListener("keydown", e => e.code === "Space" && (e.preventDefault(), flap()));
+canvas.addEventListener("mousedown", flap);
+canvas.addEventListener("touchstart", e => { e.preventDefault(); flap(); }, { passive: false });
+
+/* === RESET === */
+function reset() {
+  bird.y = height/2;
+  bird.v = 0;
+  score = 0;
+  gameOver = false;
+  started = false;
+  pipes.length = 0;
+  createInitialPipes();
+}
+
+/* === PIPE GENERATION (SAVES MESSAGES) === */
+function createPipe(offset=0) {
+  const minTop = 60, maxTop = height - pipeGap - 60;
+  const top = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+
+  const ads = [
+    "WIN A FREE MAC!", "DOWNLOAD MORE RAM", "You WON, you WON, you WON!",
+    "FIX YOUR PC NOW!", "FREE ANTIVIRUS!", "UPDATE JAVA?",
+    "MAKE YOUR PC FASTER!", "YOU WON NOTHING!", "DELETE SYSTEM32?"
+  ];
+
+  pipes.push({
+    x: width + offset,
+    top,
+    passed: false,
+    type: Math.random() < 0.5 ? "404" : "popup",
+    msgTop: ads[Math.floor(Math.random()*ads.length)],
+    msgBottom: ads[Math.floor(Math.random()*ads.length)]
+  });
+}
+function createInitialPipes() { for (let i=0;i<4;i++) createPipe(i*spacing); }
+
+/* === SKY BACKGROUND === */
+function drawSky() {
+  const sky = ctx.createLinearGradient(0, 0, 0, height);
+  sky.addColorStop(0, "#77c7ff");
+  sky.addColorStop(1, "#9fe1ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, height);
+
+  function cloud(x, y, s) {
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(x, y, 18*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+20*s, y+8*s, 16*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x-20*s, y+8*s, 16*s, 0, Math.PI*2); ctx.fill();
+  }
+
+  cloud(80, 90, 1.1);
+  cloud(300, 130, 0.9);
+  cloud(200, 60, 1.2);
+  cloud(150, 200, 0.8);
+  cloud(30, 160, 0.7);
+}
+
+/* === MARIO-STYLE PIPES === */
+function drawPipe(pipe) {
+  const topY = 0, bottomY = pipe.top + pipeGap;
+  const color = pipe.type === "404" ? "#0e7c32" : "#ff0066";
+  const border = "#003300";
+
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 3;
+  ctx.fillStyle = color;
+
+  // TOP cap
+  ctx.fillRect(pipe.x - 5, topY, pipeWidth + 10, 22);
+  ctx.strokeRect(pipe.x - 5, topY, pipeWidth + 10, 22);
+  // TOP body
+  ctx.fillRect(pipe.x, 22, pipeWidth, pipe.top - 22);
+  ctx.strokeRect(pipe.x, 22, pipeWidth, pipe.top - 22);
+
+  // BOTTOM cap
+  ctx.fillRect(pipe.x - 5, bottomY - 22, pipeWidth + 10, 22);
+  ctx.strokeRect(pipe.x - 5, bottomY - 22, pipeWidth + 10, 22);
+  // BOTTOM body
+  ctx.fillRect(pipe.x, bottomY, pipeWidth, height - bottomY);
+  ctx.strokeRect(pipe.x, bottomY, pipeWidth, height - bottomY);
+
+  /* === Pipe Text === */
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+
+  if (pipe.type === "404") {
+    ctx.font = "bold 16px Arial";
+    ctx.fillText("404", pipe.x + pipeWidth/2, pipe.top/2);
+    ctx.font = "11px Arial";
+    ctx.fillText("ERROR", pipe.x + pipeWidth/2, pipe.top/2 + 14);
+
+    const botMid = bottomY + (height-bottomY)/2;
+    ctx.font = "bold 16px Arial";
+    ctx.fillText("404", pipe.x + pipeWidth/2, botMid - 6);
+    ctx.font = "11px Arial";
+    ctx.fillText("NOT FOUND", pipe.x + pipeWidth/2, botMid + 12);
+  } else {
+    ctx.font = "bold 13px Arial";
+    ctx.fillText(pipe.msgTop, pipe.x + pipeWidth/2, pipe.top/2);
+    ctx.fillText(pipe.msgBottom, pipe.x + pipeWidth/2, bottomY + (height-bottomY)/2);
+  }
+}
+
+/* === RAINBOW MAC SPINNER === */
+function drawSpinner() {
+  const cx = bird.x, cy = bird.y, r = bird.r;
+  const colors = ["#ff0000","#ff7f00","#ffff00","#00ff00","#0000ff","#8b00ff"];
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(bird.spin);
+
+  for (let i = 0; i < colors.length; i++) {
+    ctx.beginPath();
+    ctx.fillStyle = colors[i];
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,r,(i*(Math.PI/3)),((i+1)*(Math.PI/3)));
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.fillStyle = "#fff";
+  ctx.arc(cx, cy, r*0.4, 0, Math.PI*2);
+  ctx.fill();
+}
+
+/* === GAME LOOP === */
+function update() {
+  if (!started || gameOver) return;
+  frame++;
+
+  bird.v += bird.gravity;
+  bird.y += bird.v;
+  bird.spin += 0.08;
+
+  pipes.forEach(p => p.x -= pipeSpeed);
+  if (pipes[0].x + pipeWidth < 0) pipes.shift();
+  if (pipes[pipes.length - 1].x < width - spacing) createPipe();
+
+  pipes.forEach(p => {
+    const hitX = bird.x + bird.r > p.x && bird.x - bird.r < p.x + pipeWidth;
+    if (hitX && (bird.y - bird.r < p.top || bird.y + bird.r > p.top + pipeGap)) gameOver = true;
+    if (!p.passed && p.x + pipeWidth < bird.x) { p.passed = true; score++; best = Math.max(best, score); }
+  });
+
+  if (bird.y - bird.r <= 0 || bird.y + bird.r >= height) gameOver = true;
+}
+
+function draw() {
+  ctx.clearRect(0,0,width,height);
+  drawSky();
+  pipes.forEach(drawPipe);
+  drawSpinner();
+
+  ctx.fillStyle="#000"; ctx.font="18px Arial"; ctx.textAlign="left"; ctx.fillText("Score: "+score, 10, 26);
+  ctx.textAlign="right"; ctx.fillText("Best: "+best, width-10, 26);
+
+  if (!started && !gameOver) {
+    ctx.textAlign="center"; ctx.font="20px Arial";
+    ctx.fillText("Press SPACE or CLICK to start", width/2, height/2);
+  }
+  if (gameOver) {
+    ctx.textAlign="center"; ctx.font="22px Arial"; ctx.fillStyle="#ff4545";
+    ctx.fillText("GAME OVER", width/2, height/2 - 20);
+    ctx.font="16px Arial"; ctx.fillStyle="#000";
+    ctx.fillText("Score: "+score+" | Best: "+best, width/2, height/2 + 6);
+    ctx.fillText("Press SPACE or CLICK to restart", width/2, height/2 + 28);
+  }
+}
+
+/* === START === */
+createInitialPipes();
+(function loop(){ update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>
